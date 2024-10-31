@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "InteractionInterface.h"
 #include "InteractionTestActor.generated.h"
 
 UCLASS()
-class PRACTICEJ_API AInteractionTestActor : public AActor
+class PRACTICEJ_API AInteractionTestActor : public AActor, public IInteractionInterface
 {
 	GENERATED_BODY()
 	
@@ -16,11 +17,21 @@ public:
 	AInteractionTestActor();
 
 protected:
+	UPROPERTY(EditAnywhere, Category = "Test Actor")
+	UStaticMeshComponent* Mesh;
+
+	UPROPERTY(EditInstanceOnly, Category = "Test Actor")
+	FInteractableData InstanceInteractableData;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void BeginFocus() override;
+	virtual void EndFocus() override;
+	virtual void BeginInteract() override;
+	virtual void EndInteract() override;
+	virtual void Interact(AMyCharacter* PlayerCharacter) override;
 };

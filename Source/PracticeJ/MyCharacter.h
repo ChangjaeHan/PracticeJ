@@ -22,6 +22,7 @@
 #include "InteractionInterface.h"
 #include "MyCharacter.generated.h"
 
+class AMyHUD;
 
 USTRUCT()
 struct FInteractionData
@@ -147,6 +148,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* ThirdPersonCamera;
 
+	
+	FORCEINLINE bool IsInteracting() const { return GetWorldTimerManager().IsTimerActive(TimerHandleInteraction); };
+
+	AMyHUD* HUD;
 
 
 	//Interface
@@ -211,6 +216,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* AttackAction;
 
+	/** 상호작용*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* InteractAction;
 
 
 protected:

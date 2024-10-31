@@ -10,7 +10,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyAnimInstance.h"
-
+#include "MyHUD.h"
 #include "DrawDebugHelpers.h"
 
 // Sets default values
@@ -67,7 +67,7 @@ AMyCharacter::AMyCharacter()
 
 	
 	InteractionCheckFrequency = 0.1;
-	InteractionCheckDistance = 300.0f;
+	InteractionCheckDistance = 350.0f;
 }
 
 // Called when the game starts or when spawned
@@ -75,6 +75,7 @@ void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	HUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
 	
 	
 	check(GEngine != nullptr);
@@ -128,8 +129,6 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		//임시 이벤트 키 바인딩
 		EnhancedInputComponent->BindAction(EventAction, ETriggerEvent::Completed, this, &AMyCharacter::DoEvent);
 
-
-
 		//점프 바인딩
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -152,6 +151,12 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		//공격 바인딩
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AMyCharacter::DoAttack);
+
+
+		//상호작용 바인딩
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::BeginInteract);
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Completed, this, &AMyCharacter::EndInteract);
+
 	}
 
 }
@@ -190,29 +195,33 @@ void AMyCharacter::PerformInteractionCheck()
 	FVector TraceStart{ GetPawnViewLocation()};
 	FVector TraceEnd{ TraceStart + (GetViewRotation().Vector() * InteractionCheckDistance) };
 
-	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Blue, false, 1.0f);
+	//뒤를 돌아봤을 때 trace가 앞으로 나가는 것을 방지, use Dot Product
+	float LookDirection = FVector::DotProduct(GetActorForwardVector(), GetViewRotation().Vector());
 
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
-	FHitResult TraceHit; //Hit 정보 받아옴
-
-	if (GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+	if (LookDirection > 0)
 	{
-		if (TraceHit.GetActor()->GetClass()->ImplementsInterface(UInteractionInterface::StaticClass()))
+		DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Blue, false, 1.0f);
+
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+		FHitResult TraceHit; //Hit 정보 받아옴
+
+		if (GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 		{
-			const float Distance = (TraceStart - TraceHit.ImpactPoint).Size();
-
-			if (TraceHit.GetActor() != InteractionData.CurrentInteractable && Distance <= InteractionCheckDistance)
+			if (TraceHit.GetActor()->GetClass()->ImplementsInterface(UInteractionInterface::StaticClass()))
 			{
-				FoundInteractable(TraceHit.GetActor());
-				return;
-			}
 
-			//계속 interaction 중인경우
-			if (TraceHit.GetActor() == InteractionData.CurrentInteractable)
-			{
-				return;
+				if (TraceHit.GetActor() != InteractionData.CurrentInteractable)
+				{
+					FoundInteractable(TraceHit.GetActor());
+					return;
+				}
+
+				//계속 interaction 중인경우
+				if (TraceHit.GetActor() == InteractionData.CurrentInteractable)
+				{
+					return;
+				}
 			}
 		}
 	}
@@ -223,22 +232,96 @@ void AMyCharacter::PerformInteractionCheck()
 
 void AMyCharacter::FoundInteractable(AActor* NewInteractable)
 {
+	if (IsInteracting()) 
+	{
+		EndInteract();
+	}
+
+	if (InteractionData.CurrentInteractable)
+	{
+		TargetInteractable = InteractionData.CurrentInteractable;
+		TargetInteractable->EndFocus();
+	}
+
+	InteractionData.CurrentInteractable = NewInteractable;
+	TargetInteractable = NewInteractable;
+
+	HUD->UpdateInteractionWidget(&TargetInteractable->InteractableData);
+
+
+
+	TargetInteractable->BeginFocus();
 }
 
 void AMyCharacter::NoInteractableFound()
 {
+	if (IsInteracting())
+	{
+		GetWorldTimerManager().ClearTimer(TimerHandleInteraction);
+	}
+
+	if (InteractionData.CurrentInteractable)
+	{
+		//크래시 나는걸 방지 (아이템이 사라졌는데 EndFocus하면 크래시)
+		if (IsValid(TargetInteractable.GetObject())) 
+		{
+			TargetInteractable->EndFocus();
+		}
+
+		//Hide Interaction Widget on the HUD
+		HUD->HideInteractionWidget();
+
+		InteractionData.CurrentInteractable = nullptr;
+		TargetInteractable = nullptr;
+	}
 }
 
 void AMyCharacter::BeginInteract()
 {
+	//Verify nothing has changed with the interactable state since beginning interaction
+	PerformInteractionCheck();
+
+	if (InteractionData.CurrentInteractable)
+	{
+		if (IsValid(TargetInteractable.GetObject()))
+		{
+			TargetInteractable->BeginInteract();
+
+			if (FMath::IsNearlyZero(TargetInteractable->InteractableData.InteractionDuration, 0.1f))
+			{
+				Interact();
+			}
+			else
+			{ //handle the delay
+				GetWorldTimerManager().SetTimer(TimerHandleInteraction,
+					this,
+					&AMyCharacter::Interact,
+					TargetInteractable->InteractableData.InteractionDuration,
+					false);
+			}
+		}
+	}
 }
 
 void AMyCharacter::EndInteract()
 {
+
+	GetWorldTimerManager().ClearTimer(TimerHandleInteraction);
+	
+	if (IsValid(TargetInteractable.GetObject()))
+	{
+		TargetInteractable->EndInteract();
+	}
 }
 
 void AMyCharacter::Interact()
 {
+	GetWorldTimerManager().ClearTimer(TimerHandleInteraction);
+
+	if (IsValid(TargetInteractable.GetObject()))
+	{
+		TargetInteractable->Interact(this);
+	}
 }
 
 
