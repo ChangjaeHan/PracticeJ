@@ -22,7 +22,7 @@ void AMyHUD::BeginPlay()
 
 	if (InteractionWidgetClass)
 	{
-		InteractionWidget = CreateWidget<UInteractionWidget>(GetWorld(), MainMenuClass);
+		InteractionWidget = CreateWidget<UInteractionWidget>(GetWorld(), InteractionWidgetClass);
 		InteractionWidget->AddToViewport(-1);
 		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed); //collapsed->better for performance
 	}
@@ -51,7 +51,7 @@ void AMyHUD::ShowInteractionWidget() const
 {
 	if (InteractionWidget)
 	{
-		MainMenuWidget->SetVisibility(ESlateVisibility::Visible);
+		InteractionWidget->SetVisibility(ESlateVisibility::Visible);
 	}
 }
 
@@ -59,7 +59,7 @@ void AMyHUD::HideInteractionWidget() const
 {
 	if (InteractionWidget)
 	{
-		MainMenuWidget->SetVisibility(ESlateVisibility::Collapsed);
+		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
