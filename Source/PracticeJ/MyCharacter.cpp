@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "InventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyAnimInstance.h"
 #include "MyHUD.h"
@@ -42,6 +43,11 @@ AMyCharacter::AMyCharacter()
 	ThirdPersonCamera->bUsePawnControlRotation = false;
 
 	
+	PlayerInventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("PlayerInventory"));
+	PlayerInventory->SetSlotsCapacity(20);
+	PlayerInventory->SetWeightCapacity(50.0f);
+
+
 	//애니메이션 클래스 지정
 	/*
 	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimationInstance
@@ -188,6 +194,8 @@ void AMyCharacter::DropWeapon()
 }
 
 
+
+
 //Create linetrace
 void AMyCharacter::PerformInteractionCheck()
 {
@@ -323,6 +331,17 @@ void AMyCharacter::Interact()
 		TargetInteractable->Interact(this);
 	}
 }
+
+
+void AMyCharacter::UpdateInteractionWidget() const
+{
+	if (IsValid(TargetInteractable.GetObject()))
+	{
+		HUD->UpdateInteractionWidget(&TargetInteractable->InteractableData);
+	}
+}
+
+
 
 
 void AMyCharacter::DoEvent()

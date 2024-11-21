@@ -134,6 +134,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UMyAttackComponent* AttackComponent;
 
+
+
+
+
+	FORCEINLINE bool IsInteracting() const { return GetWorldTimerManager().IsTimerActive(TimerHandleInteraction); };
+
+	FORCEINLINE UInventoryComponent* GetInventory() const { return PlayerInventory; };
+
+	void UpdateInteractionWidget() const;
+
 protected:
 
 	//Ä«¸Þ¶ó
@@ -149,7 +159,7 @@ protected:
 	class UCameraComponent* ThirdPersonCamera;
 
 	
-	FORCEINLINE bool IsInteracting() const { return GetWorldTimerManager().IsTimerActive(TimerHandleInteraction); };
+	
 
 	AMyHUD* HUD;
 
@@ -158,6 +168,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Character | Interaction")
 	TScriptInterface<IInteractionInterface> TargetInteractable;
+
+	UPROPERTY(VisibleAnywhere, Categort = "Character | Inventory")
+	UInventoryComponent* PlayerInventory;
+
+
 
 	float InteractionCheckFrequency;
 	float InteractionCheckDistance;

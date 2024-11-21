@@ -10,6 +10,8 @@
 /**
  * 
  */
+class UInventoryComponent;
+
 UCLASS()
 class PRACTICEJ_API UItemBase : public UObject
 {
@@ -20,8 +22,8 @@ public:
 
 	//Properties & Variables
 
-	//UPROPERTY()
-	//UInventoryComponent* OwningInventory;
+	UPROPERTY()
+	UInventoryComponent* OwningInventory;
 
 	UPROPERTY(VisibleAnywhere, Category = "Item")
 	FName ID; //search field for the data table
@@ -48,8 +50,14 @@ public:
 	FItemAssetData ItemAssetData;
 	
 
+	bool bIsCopy;
+	bool bIsPickup;
+
+
 	//Functions
 	UItemBase(); //constructor
+
+	void ResetItemFlags();
 
 	UFUNCTION(Category = "Item")
 	UItemBase* CreateItemCopy() const;
